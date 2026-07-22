@@ -203,9 +203,16 @@ import { useAuthStore } from '~/stores/authStore'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const { fetchApi } = useApi()
 const mobileMenuOpen = ref(false)
 
-const handleLogout = () => {
+const handleLogout = async () => {
+  try {
+    // Invalidate the laravel_session and revoke the Sanctum token server-side
+    await fetchApi('/auth/logout', { method: 'POST' })
+  } catch {
+    // Proceed with client-side cleanup even if server call fails
+  }
   authStore.logout()
   navigateTo('/login')
 }

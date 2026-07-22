@@ -1,14 +1,18 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+const isDev = process.env.NODE_ENV === 'development'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   future: {
     compatibilityVersion: 4,
   },
+  // Only load the PWA module in production — in dev it injects /dev-sw.js
+  // which causes VUE_ROUTER_R0004 noise even with devOptions.enabled: false
   modules: [
     '@pinia/nuxt',
     '@nuxtjs/tailwindcss',
-    '@vite-pwa/nuxt'
+    ...(!isDev ? ['@vite-pwa/nuxt'] : []),
   ],
   pwa: {
     manifest: {
@@ -32,14 +36,11 @@ export default defineNuxtConfig({
     workbox: {
       navigateFallback: '/'
     },
-    devOptions: {
-      enabled: true,
-      type: 'module'
-    }
   },
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000/api/v1'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000/api/v1',
+      backendBase: process.env.NUXT_PUBLIC_BACKEND_BASE || 'http://localhost:8000'
     }
   },
   css: ['~/assets/css/main.css']

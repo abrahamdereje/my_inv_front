@@ -79,7 +79,7 @@ definePageMeta({
 })
 
 const authStore = useAuthStore()
-const { fetchApi } = useApi()
+const { fetchApi, initCsrf } = useApi()
 
 const form = reactive({
   username: '',
@@ -99,13 +99,17 @@ const handleLogin = async () => {
   errorMessage.value = ''
 
   try {
+    // Step 1: Get the Sanctum CSRF cookie (sets XSRF-TOKEN + laravel_session)
+    await initCsrf()
+
+    // Step 2: Login — now the X-XSRF-TOKEN header will be sent automatically
     const res = await fetchApi<ApiResponse<{ token: string; user: any }>>('/auth/login', {
       method: 'POST',
       body: form
     })
 
     if (res.success && res.data) {
-      authStore.setAuth(res.data.token, res.data.user)
+      authStore.setUser(res.data.user)
       navigateTo('/')
     }
   } catch (err: any) {
