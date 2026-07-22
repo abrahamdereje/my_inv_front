@@ -2,16 +2,40 @@
   <div class="h-[calc(100vh-5rem)] flex flex-col lg:flex-row gap-6">
     <!-- Left Area: Product Search & Unit Selection Grid -->
     <div class="flex-1 flex flex-col min-h-0 space-y-4">
-      <!-- Search & Filters -->
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center space-x-3 shadow-lg">
-        <span class="text-slate-500 pl-1">🔍</span>
-        <input 
-          v-model="searchQuery" 
-          type="text" 
-          placeholder="Search materials (e.g. Cement, Wire, Nail, NL-3INCH)..."
-          class="w-full bg-transparent text-white placeholder-slate-500 text-sm focus:outline-none"
-        />
-        <button v-if="searchQuery" @click="searchQuery = ''" class="text-xs text-slate-500 hover:text-white">Clear</button>
+      <!-- Top Bar with Search & Network Status Badge -->
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+        <div class="w-full sm:flex-1 flex items-center space-x-3 bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800">
+          <span class="text-slate-500">🔍</span>
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Search materials (e.g. Cement, Wire, Nail)..."
+            class="w-full bg-transparent text-white placeholder-slate-500 text-sm focus:outline-none"
+          />
+          <button v-if="searchQuery" @click="searchQuery = ''" class="text-xs text-slate-500 hover:text-white">Clear</button>
+        </div>
+
+        <!-- Connection Status & Sync Queue Badge -->
+        <div class="flex items-center space-x-2">
+          <!-- Pending Queue Badge -->
+          <button 
+            v-if="syncEngine.pendingCount.value > 0"
+            @click="syncEngine.flushSyncQueue()"
+            :disabled="syncEngine.isSyncing.value || !syncEngine.isOnline.value"
+            class="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center space-x-1.5 hover:bg-amber-500/30 transition disabled:opacity-50"
+          >
+            <span>🔄 Sync Queue: {{ syncEngine.pendingCount.value }}</span>
+          </button>
+
+          <!-- Online / Offline Badge -->
+          <span 
+            class="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 border"
+            :class="syncEngine.isOnline.value ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'"
+          >
+            <span class="w-2 h-2 rounded-full" :class="syncEngine.isOnline.value ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'"></span>
+            <span>{{ syncEngine.isOnline.value ? 'Online' : 'Offline Mode' }}</span>
+          </span>
+        </div>
       </div>
 
       <!-- Products Grid -->
@@ -55,8 +79,7 @@
                   v-for="pu in p.product_units" 
                   :key="pu.id"
                   @click="posStore.addToCart(p, pu, 1)"
-                  :disabled="(p.available_stock || 0) <= 0"
-                  class="w-full px-3 py-2 rounded-xl bg-slate-950 hover:bg-indigo-600/30 hover:border-indigo-500 border border-slate-800 flex items-center justify-between text-xs transition disabled:opacity-40 disabled:cursor-not-allowed group"
+                  class="w-full px-3 py-2 rounded-xl bg-slate-950 hover:bg-indigo-600/30 hover:border-indigo-500 border border-slate-800 flex items-center justify-between text-xs transition group"
                 >
                   <span class="font-bold text-white group-hover:text-indigo-200">
                     {{ pu.unit?.name }}
@@ -168,26 +191,30 @@
         <button 
           @click="submitCheckout"
           :disabled="isSubmitting"
-          class="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 transition disabled:opacity-50"
+          class="w-full py-3.5 rounded-xl text-white font-bold text-sm shadow-lg transition disabled:opacity-50"
+          :class="syncEngine.isOnline.value ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30' : 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/30'"
         >
-          {{ isSubmitting ? 'Processing Checkout...' : 'Complete POS Checkout' }}
+          {{ isSubmitting ? 'Processing Checkout...' : (syncEngine.isOnline.value ? 'Complete POS Checkout' : 'Save Offline POS Checkout') }}
         </button>
       </div>
     </div>
 
-    <!-- Printable Receipt Modal -->
+    <!-- Printable / Viewable Receipt Modal -->
     <div v-if="lastReceipt" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
         <div class="text-center border-b border-slate-800 pb-3">
           <h3 class="font-bold text-white text-lg">Sales Receipt</h3>
           <p class="text-xs text-indigo-400 font-mono">{{ lastReceipt.invoice_number }}</p>
+          <p v-if="lastReceipt.is_offline" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-block mt-1">
+            Offline Saved - Pending Sync
+          </p>
           <p class="text-[11px] text-slate-500 mt-1">{{ new Date(lastReceipt.created_at).toLocaleString() }}</p>
         </div>
 
         <div class="space-y-2 max-h-48 overflow-y-auto text-xs">
-          <div v-for="item in lastReceipt.items" :key="item.id" class="flex justify-between border-b border-slate-800/60 pb-1">
+          <div v-for="item in lastReceipt.items" :key="item.id || item.product_id" class="flex justify-between border-b border-slate-800/60 pb-1">
             <div>
-              <p class="font-semibold text-white">{{ item.product?.name }}</p>
+              <p class="font-semibold text-white">{{ item.product?.name || getProductName(item.product_id) }}</p>
               <p class="text-slate-500 text-[10px]">{{ item.quantity }} x {{ item.selling_price }} ETB</p>
             </div>
             <p class="font-bold text-emerald-400">{{ (item.quantity * item.selling_price).toFixed(2) }} ETB</p>
@@ -202,10 +229,6 @@
           <div class="flex justify-between text-slate-400">
             <span>Paid Amount:</span>
             <span>{{ lastReceipt.paid_amount }} ETB</span>
-          </div>
-          <div v-if="Number(lastReceipt.remaining_amount) > 0" class="flex justify-between text-rose-400 font-semibold">
-            <span>Credit Remaining:</span>
-            <span>{{ lastReceipt.remaining_amount }} ETB</span>
           </div>
         </div>
 
@@ -222,6 +245,7 @@
 <script setup lang="ts">
 import { usePosStore } from '~/stores/posStore'
 import { useCustomerStore } from '~/stores/customerStore'
+import { useSync } from '~/composables/useSync'
 import type { Sale, ApiResponse } from '~/types/models'
 
 definePageMeta({
@@ -230,17 +254,30 @@ definePageMeta({
 
 const posStore = usePosStore()
 const customerStore = useCustomerStore()
+const syncEngine = useSync()
 const { fetchApi } = useApi()
 
 const searchQuery = ref('')
 const isSubmitting = ref(false)
-const lastReceipt = ref<Sale | null>(null)
+const lastReceipt = ref<any>(null)
 
 onMounted(async () => {
-  await Promise.all([
-    posStore.loadPosProducts(),
-    customerStore.loadCustomers()
-  ])
+  if (syncEngine.isOnline.value) {
+    await Promise.all([
+      posStore.loadPosProducts(),
+      customerStore.loadCustomers()
+    ])
+    // Cache to IndexedDB
+    if (posStore.posProducts.length > 0) {
+      syncEngine.cacheProducts(posStore.posProducts)
+    }
+  } else {
+    // Load cached catalog from IndexedDB
+    const cached = await syncEngine.getCachedProducts()
+    if (cached.length > 0) {
+      posStore.posProducts = cached
+    }
+  }
 })
 
 const filteredProducts = computed(() => {
@@ -251,40 +288,86 @@ const filteredProducts = computed(() => {
   )
 })
 
+const getProductName = (productId: string) => {
+  const p = posStore.posProducts.find(x => x.id === productId)
+  return p ? p.name : 'Material Item'
+}
+
 const submitCheckout = async () => {
   if (posStore.cart.length === 0) return
 
-  // Auto set paid amount if not typed
   if (posStore.paidAmount === 0 && !posStore.selectedCustomerId) {
     posStore.paidAmount = posStore.cartTotal
   }
 
   isSubmitting.value = true
 
+  const saleItems = posStore.cart.map(i => ({
+    product_id: i.product.id,
+    unit_id: i.unit.unit_id,
+    quantity: i.quantity,
+    selling_price: i.selling_price
+  }))
+
   try {
-    const payload = {
-      customer_id: posStore.selectedCustomerId,
-      paid_amount: posStore.paidAmount,
-      items: posStore.cart.map(i => ({
-        product_id: i.product.id,
-        unit_id: i.unit.unit_id,
-        quantity: i.quantity,
-        selling_price: i.selling_price
-      }))
-    }
+    if (syncEngine.isOnline.value) {
+      // Online Checkout
+      const payload = {
+        customer_id: posStore.selectedCustomerId,
+        paid_amount: posStore.paidAmount,
+        items: saleItems
+      }
 
-    const res = await fetchApi<ApiResponse<Sale>>('/sales', {
-      method: 'POST',
-      body: payload
-    })
+      const res = await fetchApi<ApiResponse<Sale>>('/sales', {
+        method: 'POST',
+        body: payload
+      })
 
-    if (res.success && res.data) {
-      lastReceipt.value = res.data
+      if (res.success && res.data) {
+        lastReceipt.value = res.data
+        posStore.clearCart()
+        await posStore.loadPosProducts()
+      }
+    } else {
+      // Offline Checkout fallback (IndexedDB queue)
+      const offlineRecord = await syncEngine.recordOfflineSale({
+        customer_id: posStore.selectedCustomerId,
+        paid_amount: posStore.paidAmount,
+        total_amount: posStore.cartTotal,
+        items: saleItems
+      })
+
+      lastReceipt.value = {
+        invoice_number: offlineRecord?.id,
+        created_at: offlineRecord?.created_at,
+        total_amount: offlineRecord?.total_amount,
+        paid_amount: offlineRecord?.paid_amount,
+        items: saleItems,
+        is_offline: true
+      }
+
       posStore.clearCart()
-      await posStore.loadPosProducts()
     }
   } catch (err: any) {
-    alert(err?.data?.message || 'Failed to complete POS checkout')
+    // Network failure during submission — fallback to offline saving
+    console.warn('Online checkout failed, falling back to local queue', err)
+    const offlineRecord = await syncEngine.recordOfflineSale({
+      customer_id: posStore.selectedCustomerId,
+      paid_amount: posStore.paidAmount,
+      total_amount: posStore.cartTotal,
+      items: saleItems
+    })
+
+    lastReceipt.value = {
+      invoice_number: offlineRecord?.id,
+      created_at: offlineRecord?.created_at,
+      total_amount: offlineRecord?.total_amount,
+      paid_amount: offlineRecord?.paid_amount,
+      items: saleItems,
+      is_offline: true
+    }
+
+    posStore.clearCart()
   } finally {
     isSubmitting.value = false
   }
