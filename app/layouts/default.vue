@@ -19,7 +19,7 @@
     <aside 
       :class="[
         mobileMenuOpen ? 'block' : 'hidden',
-        'md:block w-full md:w-64 bg-slate-950 border-r border-slate-800 flex-shrink-0 flex flex-col justify-between fixed md:sticky top-0 h-screen z-30'
+        'md:block w-full md:w-64 bg-slate-950 border-r border-slate-800 flex-shrink-0 flex flex-col justify-between fixed md:sticky top-0 h-screen z-30 overflow-y-auto'
       ]"
     >
       <div>
@@ -39,16 +39,26 @@
           <NuxtLink 
             to="/" 
             @click="mobileMenuOpen = false"
-            class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-150"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
             :class="route.path === '/' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
           >
             <span class="mr-3">📊</span> Dashboard
           </NuxtLink>
 
           <NuxtLink 
+            v-if="authStore.hasRole('OWNER')"
+            to="/reports" 
+            @click="mobileMenuOpen = false"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
+            :class="route.path.startsWith('/reports') ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >
+            <span class="mr-3">📈</span> Owner Reports & Profits
+          </NuxtLink>
+
+          <NuxtLink 
             to="/products" 
             @click="mobileMenuOpen = false"
-            class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-150"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
             :class="route.path.startsWith('/products') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
           >
             <span class="mr-3">📦</span> Product Catalog
@@ -57,19 +67,99 @@
           <NuxtLink 
             to="/categories" 
             @click="mobileMenuOpen = false"
-            class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-150"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
             :class="route.path === '/categories' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
           >
             <span class="mr-3">🏷️</span> Categories
           </NuxtLink>
 
+          <div class="pt-3 pb-1">
+            <span class="px-4 text-[10px] uppercase tracking-wider font-bold text-slate-500">Purchasing & Inventory</span>
+          </div>
+
+          <NuxtLink 
+            to="/suppliers" 
+            @click="mobileMenuOpen = false"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
+            :class="route.path.startsWith('/suppliers') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >
+            <span class="mr-3">🏢</span> Suppliers & Debt
+          </NuxtLink>
+
+          <NuxtLink 
+            to="/purchases" 
+            @click="mobileMenuOpen = false"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
+            :class="route.path.startsWith('/purchases') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >
+            <span class="mr-3">📑</span> Purchases / Invoices
+          </NuxtLink>
+
+          <NuxtLink 
+            to="/inventory/batches" 
+            @click="mobileMenuOpen = false"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
+            :class="route.path === '/inventory/batches' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >
+            <span class="mr-3">🧊</span> FIFO Stock Batches
+          </NuxtLink>
+
+          <NuxtLink 
+            to="/inventory/movements" 
+            @click="mobileMenuOpen = false"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
+            :class="route.path === '/inventory/movements' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >
+            <span class="mr-3">📜</span> Stock Movements
+          </NuxtLink>
+
+          <NuxtLink 
+            to="/inventory/counts" 
+            @click="mobileMenuOpen = false"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
+            :class="route.path === '/inventory/counts' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >
+            <span class="mr-3">📋</span> Physical Stock Counts
+          </NuxtLink>
+
+          <div class="pt-3 pb-1">
+            <span class="px-4 text-[10px] uppercase tracking-wider font-bold text-slate-500">Sales & Finance</span>
+          </div>
+
           <NuxtLink 
             to="/pos" 
             @click="mobileMenuOpen = false"
-            class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-150"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
             :class="route.path === '/pos' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
           >
             <span class="mr-3">🛒</span> POS Checkout
+          </NuxtLink>
+
+          <NuxtLink 
+            to="/customers" 
+            @click="mobileMenuOpen = false"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
+            :class="route.path.startsWith('/customers') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >
+            <span class="mr-3">👥</span> Customers & Credit
+          </NuxtLink>
+
+          <NuxtLink 
+            to="/sales" 
+            @click="mobileMenuOpen = false"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
+            :class="route.path === '/sales' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >
+            <span class="mr-3">📄</span> Sales History
+          </NuxtLink>
+
+          <NuxtLink 
+            to="/expenses" 
+            @click="mobileMenuOpen = false"
+            class="flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-150"
+            :class="route.path.startsWith('/expenses') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >
+            <span class="mr-3">💸</span> Operational Expenses
           </NuxtLink>
         </nav>
       </div>
